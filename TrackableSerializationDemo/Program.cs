@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Data.Entity;
 using System.IO;
 using System.Linq;
+using System.Runtime.Serialization;
 using Newtonsoft.Json;
 using TrackableEntities.Client;
 using TrackableSerializationDemo.Entities.Shared.Net45;
@@ -12,36 +13,46 @@ namespace TrackableSerializationDemo
     class Program
     {
         private const string JsonPath = @"..\..\orders.json";
+        private const string XmlPath = @"..\..\orders.xml";
 
         static void Main(string[] args)
         {
             Console.WriteLine("Trackable Entities Serialization Demo:" +
                 "\nRefer to solution ReadMe to create NorthwindSlim database.");
-            Console.WriteLine("\nRun this program twice:" +
-                "\nFirst to retireve and serialize orders, second to deserialize orders.");
-            Console.WriteLine("\nGet Orders for ALFKI: Retrieve {R} Deserialize {D}");
-            var response = Console.ReadLine().ToUpper();
 
-            ChangeTrackingCollection<Order> orders = null;
-            if (response == "R")
-                orders = RetrieveOrders();
-            else if (response == "D")
-                orders = DeserializeOrders();
-            else
+            Console.WriteLine("\nPress Enter to retrieve customer orders.");
+            Console.ReadLine();
+            ChangeTrackingCollection<Order> orders = RetrieveOrders();
+            foreach (var order in orders)
+                PrintOrder(order);
+
+            Console.WriteLine("\nSelect a format: JSON {J}, XML {X}");
+            var response = Console.ReadLine().ToUpper();
+            if (response != "J" && response != "X")
             {
                 Console.WriteLine("Invalid response: '{0}'", response);
+                return;
             }
-            if (orders == null) return;
 
+            if (response == "J")
+                SerializeOrdersJson(orders);
+            else if (response == "X")
+                SerializeOrdersXml(orders);
+            Console.WriteLine("Orders have been serialized.");
+
+            Console.WriteLine("\nPress Enter to deserialize orders");
+            Console.ReadLine();
+            if (response == "J")
+                orders = DeserializeOrdersJson();
+            else if (response == "X")
+                orders = DeserializeOrdersXml();
+
+            Console.WriteLine("\nDeserialized orders:\n");
             foreach (var order in orders)
-            {
                 PrintOrder(order);
-            }
 
-            Console.WriteLine("\nSerialize orders collection? {Y/N}");
-            response = Console.ReadLine().ToUpper();
-            if (response == "Y")
-                SerializeOrders(orders);
+            Console.WriteLine("\nPress Enter to exit");
+            Console.ReadLine();
         }
 
         private static ChangeTrackingCollection<Order> RetrieveOrders()
@@ -58,23 +69,52 @@ namespace TrackableSerializationDemo
             return new ChangeTrackingCollection<Order>(orders);
         }
 
-        private static void SerializeOrders(ChangeTrackingCollection<Order> orders)
+        private static void SerializeOrdersJson(ChangeTrackingCollection<Order> orders)
         {
-            var json = JsonConvert.SerializeObject(orders);
+            var settings = new JsonSerializerSettings { PreserveReferencesHandling = PreserveReferencesHandling.All };
+            var json = JsonConvert.SerializeObject(orders, settings);
             File.WriteAllText(JsonPath, json);
         }
 
-        private static ChangeTrackingCollection<Order> DeserializeOrders()
+        private static ChangeTrackingCollection<Order> DeserializeOrdersJson()
         {
             if (!File.Exists(JsonPath))
             {
                 Console.WriteLine("Orders JSON file does not exist. " +
-                    "First retrieve and serialize orders.");
+                    "First retrieve and serialize orders as JSON.");
                 return null;
             }
             string json = File.ReadAllText(JsonPath);
-            var orders = JsonConvert.DeserializeObject<ChangeTrackingCollection<Order>>(json);
+            var settings = new JsonSerializerSettings { PreserveReferencesHandling = PreserveReferencesHandling.All };
+            var orders = JsonConvert.DeserializeObject<ChangeTrackingCollection<Order>>(json, settings);
             return orders;
+        }
+
+        private static void SerializeOrdersXml(ChangeTrackingCollection<Order> orders)
+        {
+            var settings = new DataContractSerializerSettings { PreserveObjectReferences = true };
+            var serializer = new DataContractSerializer(typeof(ChangeTrackingCollection<Order>), settings);
+            using (var fs = new FileStream(XmlPath, FileMode.CreateNew))
+            {
+                serializer.WriteObject(fs, orders);
+            }
+        }
+
+        private static ChangeTrackingCollection<Order> DeserializeOrdersXml()
+        {
+            if (!File.Exists(XmlPath))
+            {
+                Console.WriteLine("Orders XML file does not exist. " +
+                    "First retrieve and serialize orders as XML.");
+                return null;
+            }
+            var settings = new DataContractSerializerSettings { PreserveObjectReferences = true };
+            var serializer = new DataContractSerializer(typeof(ChangeTrackingCollection<Order>), settings);
+            using (var fs = new FileStream(XmlPath, FileMode.Open))
+            {
+                var orders = (ChangeTrackingCollection<Order>)serializer.ReadObject(fs);
+                return orders;
+            }
         }
 
         private static void PrintOrder(Order order)
