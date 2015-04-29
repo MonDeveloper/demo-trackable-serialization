@@ -8,6 +8,9 @@ using Newtonsoft.Json;
 using TrackableEntities.Client;
 using TrackableSerializationDemo.Entities.Shared.Net45;
 
+// NOTE: Serialization of cached deletes only works with JSON serialization,
+// because the DC serializers does not support callbacks with collection types.
+
 namespace TrackableSerializationDemo
 {
     class Program
@@ -22,9 +25,20 @@ namespace TrackableSerializationDemo
 
             Console.WriteLine("\nPress Enter to retrieve customer orders.");
             Console.ReadLine();
-            ChangeTrackingCollection<Order> orders = RetrieveOrders();
+            var ordersList = RetrieveOrders();
+            var orders = new SerializableChangeTrackingCollection<Order>(ordersList);
             foreach (var order in orders)
                 PrintOrder(order);
+            Console.WriteLine("Total orders: {0}", orders.Count);
+
+            Console.WriteLine("\nPress Enter to delete every other order.");
+            Console.ReadLine();
+            for (int i = orders.Count - 1; i > -1; i--)
+            {
+                if (i % 2 == 0)
+                    orders.RemoveAt(i);
+            }
+            Console.WriteLine("Remaining orders: {0}", orders.Count);
 
             Console.WriteLine("\nSelect a format: JSON {J}, XML {X}");
             var response = Console.ReadLine().ToUpper();
@@ -42,20 +56,25 @@ namespace TrackableSerializationDemo
 
             Console.WriteLine("\nPress Enter to deserialize orders");
             Console.ReadLine();
+            ChangeTrackingCollection<Order> restoredOrders = null;
             if (response == "J")
-                orders = DeserializeOrdersJson();
+                restoredOrders = DeserializeOrdersJson();
             else if (response == "X")
-                orders = DeserializeOrdersXml();
+                restoredOrders = DeserializeOrdersXml();
 
+            if (restoredOrders == null) return;
             Console.WriteLine("\nDeserialized orders:\n");
-            foreach (var order in orders)
+            foreach (var order in restoredOrders)
                 PrintOrder(order);
 
+            Console.WriteLine("Restored orders: {0}", restoredOrders.Count);
+            var cachedDeletes = restoredOrders.GetCachedDeletes();
+            Console.WriteLine("Cached deletes: {0}", cachedDeletes.Count);
             Console.WriteLine("\nPress Enter to exit");
             Console.ReadLine();
         }
 
-        private static ChangeTrackingCollection<Order> RetrieveOrders()
+        private static List<Order> RetrieveOrders()
         {
             List<Order> orders;
             using (var dbContext = new NorthwindSlim())
@@ -66,10 +85,10 @@ namespace TrackableSerializationDemo
                           where o.CustomerId == "ALFKI"
                           select o).ToList();
             }
-            return new ChangeTrackingCollection<Order>(orders);
+            return orders;
         }
 
-        private static void SerializeOrdersJson(ChangeTrackingCollection<Order> orders)
+        private static void SerializeOrdersJson(SerializableChangeTrackingCollection<Order> orders)
         {
             var settings = new JsonSerializerSettings { PreserveReferencesHandling = PreserveReferencesHandling.All };
             var json = JsonConvert.SerializeObject(orders, settings);
@@ -86,14 +105,16 @@ namespace TrackableSerializationDemo
             }
             string json = File.ReadAllText(JsonPath);
             var settings = new JsonSerializerSettings { PreserveReferencesHandling = PreserveReferencesHandling.All };
-            var orders = JsonConvert.DeserializeObject<ChangeTrackingCollection<Order>>(json, settings);
+            var orders = JsonConvert.DeserializeObject<SerializableChangeTrackingCollection<Order>>(json, settings);
             return orders;
         }
 
-        private static void SerializeOrdersXml(ChangeTrackingCollection<Order> orders)
+        private static void SerializeOrdersXml(SerializableChangeTrackingCollection<Order> orders)
         {
             var settings = new DataContractSerializerSettings { PreserveObjectReferences = true };
-            var serializer = new DataContractSerializer(typeof(ChangeTrackingCollection<Order>), settings);
+            var serializer = new DataContractSerializer(typeof(SerializableChangeTrackingCollection<Order>), settings);
+            if (File.Exists(XmlPath))
+                File.Delete(XmlPath);
             using (var fs = new FileStream(XmlPath, FileMode.CreateNew))
             {
                 serializer.WriteObject(fs, orders);
@@ -109,7 +130,7 @@ namespace TrackableSerializationDemo
                 return null;
             }
             var settings = new DataContractSerializerSettings { PreserveObjectReferences = true };
-            var serializer = new DataContractSerializer(typeof(ChangeTrackingCollection<Order>), settings);
+            var serializer = new DataContractSerializer(typeof(SerializableChangeTrackingCollection<Order>), settings);
             using (var fs = new FileStream(XmlPath, FileMode.Open))
             {
                 var orders = (ChangeTrackingCollection<Order>)serializer.ReadObject(fs);
