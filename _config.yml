@@ -1,0 +1,4 @@
+name: Trackable Serialization Demo
+markdown: redcarpet
+highlighter: pygments
+baseurl: /demo-trackable-serialization
