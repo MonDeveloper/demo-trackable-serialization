@@ -5,7 +5,7 @@ subheading: Demo of how to serialize trackable entities.
 home: true
 ---
 
-### Welcome to GitHub Pages.
+### Welcome to GitHub Pages 2.
 This automatic page generator is the easiest way to create beautiful pages for all of your projects. Author your page content here using GitHub Flavored Markdown, select a template crafted by a designer, and publish. After your page is generated, you can check out the new branch:
 
 ```
@@ -26,4 +26,4 @@ If you prefer to not use the automatic generator, push a branch named `gh-pages`
 You can @mention a GitHub username to generate a link to their profile. The resulting `<a>` element will link to the contributor's GitHub Profile. For example: In 2007, Chris Wanstrath (@defunkt), PJ Hyett (@pjhyett), and Tom Preston-Werner (@mojombo) founded GitHub.
 
 ### Support or Contact
-Having trouble with Pages? Check out the documentation at https://help.github.com/pages or contact support@github.com and we’ll help you sort it out.
+Having trouble with Pages? Check out the documentation at https://help.github.com/pages or contact support@github.com and weâ€™ll help you sort it out.
