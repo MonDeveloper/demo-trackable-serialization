@@ -25,20 +25,36 @@ namespace TrackableSerializationDemo
 
             Console.WriteLine("\nPress Enter to retrieve customer orders.");
             Console.ReadLine();
-            var ordersList = RetrieveOrders();
+            var ordersList = RetrieveOrders().Take(1);
             var orders = new SerializableChangeTrackingCollection<Order>(ordersList);
+            var mainOrder = orders.First();
             foreach (var order in orders)
                 PrintOrder(order);
             Console.WriteLine("Total orders: {0}", orders.Count);
 
-            Console.WriteLine("\nPress Enter to delete every other order.");
+            //Console.WriteLine("\nPress Enter to delete every other order.");
+            //Console.ReadLine();
+            //for (int i = orders.Count - 1; i > -1; i--)
+            //{
+            //    if (i % 2 == 0)
+            //        orders.RemoveAt(i);
+            //}
+            //Console.WriteLine("Remaining orders: {0}", orders.Count);
+
+            Console.WriteLine();
+            Console.WriteLine();
+            Console.WriteLine("\nPress Enter to DELETE some order details.");
             Console.ReadLine();
-            for (int i = orders.Count - 1; i > -1; i--)
+            Console.WriteLine();
+            for (int i = mainOrder.OrderDetails.Count - 1; i > -1; i--)
             {
                 if (i % 2 == 0)
-                    orders.RemoveAt(i);
+                    mainOrder.OrderDetails.RemoveAt(i);
             }
-            Console.WriteLine("Remaining orders: {0}", orders.Count);
+            PrintOrder(mainOrder);
+            var cachedDeletes = mainOrder.OrderDetails.GetCachedDeletes();
+            Console.WriteLine("Cached order details deletes: {0}", cachedDeletes.Count);
+
 
             Console.WriteLine("\nSelect a format: JSON {J}, XML {X}");
             var response = Console.ReadLine().ToUpper();
@@ -63,13 +79,16 @@ namespace TrackableSerializationDemo
                 restoredOrders = DeserializeOrdersXml();
 
             if (restoredOrders == null) return;
+            var restoredMainOrder = restoredOrders.First();
             Console.WriteLine("\nDeserialized orders:\n");
             foreach (var order in restoredOrders)
                 PrintOrder(order);
 
             Console.WriteLine("Restored orders: {0}", restoredOrders.Count);
-            var cachedDeletes = restoredOrders.GetCachedDeletes();
-            Console.WriteLine("Cached deletes: {0}", cachedDeletes.Count);
+            //var cachedDeletes = restoredOrders.GetCachedDeletes();
+            //Console.WriteLine("Cached deletes: {0}", cachedDeletes.Count);
+            cachedDeletes = restoredMainOrder.OrderDetails.GetCachedDeletes();
+            Console.WriteLine("Cached order details deletes: {0}", cachedDeletes.Count);
             Console.WriteLine("\nPress Enter to exit");
             Console.ReadLine();
         }
